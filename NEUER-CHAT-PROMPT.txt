@@ -1,0 +1,34 @@
+========================================================================
+PROMPT FÜR EIN NEUES CHATFENSTER  —  einfach kopieren, <FIRMENNAME> ersetzen
+========================================================================
+
+Öffne mit Playwright sichtbar den Browser, gehe auf openfirmenbuch.at und
+suche "<FIRMENNAME> GmbH". Öffne den ersten Treffer (Detailseite), mach
+Screenshots und lade ALLE Jahresabschluss-PDFs herunter (auch die Folgeseiten
+der Dokumententabelle) und benenne sie lesbar nach dem Schema
+   Firma_Jahresabschluss_<Jahr>_eingereicht_<JJJJ-MM-TT>.pdf
+
+Nutze dafür das bereits fertige Skript. Führe in PowerShell aus:
+
+   node "C:\Users\Leonie\OneDrive - Fachschule für Sozialberufe\Desktop\alexs projekt\firmenbuch-suche.mjs" "<FIRMENNAME> GmbH"
+
+Die Ergebnisse liegen danach in:
+   C:\Users\Leonie\OneDrive - Fachschule für Sozialberufe\Desktop\alexs projekt\output\<Firma>\
+
+Danach: lies die heruntergeladenen PDFs aus, erstelle eine Zusammenfassung mit
+allen Bilanz-Kennzahlen und der Entwicklung über die Jahre, und gib mir das
+Ergebnis ALS PDF (nutze report-pdf.mjs im selben Ordner:
+   node "...\alexs projekt\report-pdf.mjs" zusammenfassung.md Ergebnis.pdf ).
+
+WICHTIG / Stolperfallen:
+- Firmennamen korrekt schreiben (z.B. "Velartis", nicht "Verlartis") – sonst 0 Treffer.
+- Keine ":" oder < > " / \ | ? * in Dateinamen (unter Windows verboten).
+- Kleine/Kleinst-GmbHs veröffentlichen nur die Bilanz, KEINE GuV (kein Umsatz).
+- Voraussetzung: Node installiert; Playwright kommt aus dem Projekt "core-app".
+  Details und Hintergründe stehen in README.md / Anleitung.pdf im selben Ordner.
+
+Optionen des Skripts (Umgebungsvariablen):
+   $env:HEADLESS=1      -> Browser unsichtbar
+   $env:NO_DOWNLOAD=1   -> nur Suche + Screenshots, keine Downloads
+   $env:SLOWMO=200      -> langsamer (besser sichtbar)
+========================================================================
