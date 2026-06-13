@@ -1,0 +1,10 @@
+node_modules/
+playwright/.auth/
+test-results/
+playwright-report/
+.worktrees/
+
+# Environment variables — niemals committen
+.env
+.env.local
+.env.*.local
