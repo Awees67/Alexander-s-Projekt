@@ -1,0 +1,231 @@
+---
+name: feature-development-workflow
+description: End-to-end workflow für neue Features — von Idee bis Vercel-Deploy. Nutzen wenn ein neues Feature gebaut werden soll.
+---
+
+# Feature Development Workflow
+
+Dieser Workflow hat sich bei der Entwicklung des "Top 5 Deals der Woche"-Features bewährt. Er ist professionell, rückverfolgbar und verhindert kostspielige Fehler durch frühe Validierung.
+
+---
+
+## Phasen im Überblick
+
+```
+Idee → Brainstorming → Mockup → Design Spec → Plan → Worktree → Subagents → Test → Merge → Deploy
+```
+
+---
+
+## Phase 1: Brainstorming
+
+**Skill:** `brainstorming`
+
+Bevor irgendein Code geschrieben wird:
+- Was soll das Feature leisten? Für wen?
+- Welche Daten braucht es? Woher kommen sie?
+- Welche Architektur-Konsequenzen hat es? (neue Dateien, Änderungen bestehender Dateien)
+- Welche Edge Cases gibt es?
+
+**Output:** Klares Bild der Anforderungen, keine offenen Architektur-Fragen.
+
+---
+
+## Phase 2: Visuelles Mockup (bei UI-Features)
+
+Für Features mit UI: **Mockup als HTML-Datei bauen** und im Browser zeigen.
+
+- Mockup in `docs/superpowers/mockup-[feature].html` ablegen
+- Design-Tokens und CSS-Klassen aus der echten App verwenden (aus `main.css` und bestehenden Renderern lesen)
+- Mehrere Optionen anbieten (A/B/C), User wählt
+
+**Warum:** Design-Fehler hier zu finden kostet 10 Minuten. Nach der Implementierung kostet es Stunden.
+
+**Commit:** Mockups in `docs/superpowers/` committen — sie sind Teil der Entscheidungshistorie.
+
+---
+
+## Phase 3: Design Spec
+
+**Skill:** `writing-plans` (für den Spec-Teil)
+
+Design Spec in `docs/superpowers/specs/[datum]-[feature]-design.md` schreiben.
+
+### Pflichtinhalte der Spec:
+
+| Abschnitt | Inhalt |
+|---|---|
+| Betroffene Dateien | Exakte Liste welche Dateien geändert / neu erstellt werden |
+| Script-Load-Order | Wenn JS-Dateien hinzukommen: exakte Position in `index.html` |
+| Daten & Algorithmus | Wie funktioniert die Logik, welche Datenfelder werden genutzt |
+| UI-Struktur | DOM-Elemente, CSS-Klassen, Design Tokens |
+| Edge Cases | Was passiert bei leeren Daten, Nullwerten, Grenzfällen |
+| Was sich NICHT ändert | Explizit benennen was unberührt bleibt |
+
+### Review-Iterationen:
+
+Spec **niemals beim ersten Entwurf akzeptieren**. Mindestens 1 Reviewrunde:
+- Stimmen alle Abhängigkeiten? (Script-Load-Order, Funktionsnamen)
+- Stimmen alle CSS-Klassen mit dem echten Code überein?
+- Sind alle Edge Cases abgedeckt?
+- Ist der Scope klar abgegrenzt?
+
+**Commit:** Spec committen, bevor die Implementierung startet.
+
+---
+
+## Phase 4: Implementierungsplan
+
+**Skill:** `writing-plans`
+
+Plan in `docs/superpowers/plans/[datum]-[feature].md` schreiben.
+
+### Struktur:
+
+```markdown
+## Task N: [Name]
+**Datei:** `path/to/file.js`
+**Was:** Kurze Beschreibung
+**Code:**
+[exakter Code-Block]
+**Verifikation:** Wie prüft man ob dieser Task erfolgreich war?
+```
+
+- Jeden Task so klein wie möglich halten (1 Datei = 1 Task)
+- Exakten Code angeben, keine vagen Beschreibungen
+- Reihenfolge: Abhängigkeiten zuerst
+
+**Commit:** Plan committen vor der Ausführung.
+
+---
+
+## Phase 5: Git Worktree erstellen
+
+**Skill:** `using-git-worktrees`
+
+```bash
+# Branch + Worktree in einem Schritt
+git worktree add .worktrees/feat-[name] -b feat/[name]
+```
+
+**Warum Worktree statt direktem Branch:**
+- `main` bleibt stabil und deploybar während das Feature gebaut wird
+- Subagents arbeiten im Worktree, nicht im Main-Tree
+- Einfaches Verwerfen wenn nötig: `git worktree remove .worktrees/feat-[name]`
+
+**`.gitignore` Eintrag:** `.worktrees/` muss in `.gitignore` sein.
+
+---
+
+## Phase 6: Subagent-gesteuerte Ausführung
+
+**Skill:** `executing-plans` + `dispatching-parallel-agents`
+
+### Prinzip: Ein Subagent pro Task
+
+Jeder Task aus dem Plan wird von einem **frischen Subagenten** ausgeführt:
+
+```
+Hauptagent → dispatcht Task N → Subagent führt aus → Review → nächster Task
+```
+
+**Subagent-Prompt-Template:**
+```
+Führe Task [N] aus dem Implementierungsplan aus.
+Arbeitsverzeichnis: [absoluter Pfad zum Worktree]
+Branch: feat/[name]
+
+Spec: [Pfad zur Design Spec]
+Plan: [Pfad zum Implementierungsplan]
+
+Task [N]: [exakte Beschreibung aus dem Plan]
+
+Committe danach mit: "feat: [kurze Beschreibung]"
+```
+
+### Nach jedem Task: Review
+
+Bevor der nächste Task gestartet wird:
+- Hat der Subagent die richtige Datei bearbeitet?
+- Stimmt der Commit?
+- Sind keine ungewollten Nebeneffekte entstanden?
+
+### Vorteile frischer Subagents:
+- Kein "Context Pollution" aus vorherigen Tasks
+- Fehler eines Tasks beeinflussen den nächsten nicht
+- Klare Verantwortlichkeit pro Task
+
+---
+
+## Phase 7: Testen im Worktree
+
+Bevor gemergt wird, Feature **im Worktree testen**:
+
+```bash
+# Static server im Worktree
+cd .worktrees/feat-[name]
+npx serve .
+```
+
+Oder direkt `index.html` im Browser öffnen.
+
+**Test-Checkliste:**
+- [ ] Happy Path funktioniert
+- [ ] Edge Cases (leere Daten, Nullwerte) funktionieren
+- [ ] Dark Mode / Light Mode
+- [ ] Schließen-Mechanismen (✕, Backdrop-Klick, ESC)
+- [ ] Keine Konsolen-Fehler
+
+---
+
+## Phase 8: Merge & Deploy
+
+Erst nach erfolgreichem Test:
+
+```bash
+# Im Main-Tree
+git merge feat/[name] --no-edit
+git push origin main
+
+# Aufräumen
+git worktree remove .worktrees/feat-[name]
+git branch -d feat/[name]
+```
+
+Vercel deployt automatisch bei Push auf `main`. Deployment prüfen:
+```bash
+curl -s "https://[app].vercel.app/js/[neue-datei].js" | head -3
+```
+
+---
+
+## Test-Daten (wenn Supabase-Daten fehlen)
+
+```bash
+node scripts/seed-submissions.mjs
+```
+
+Löschen nach dem Test:
+```sql
+DELETE FROM submissions WHERE company_name IN ('TEST-1', 'TEST-2', ...);
+```
+
+---
+
+## Entscheidungsprotokoll
+
+Wichtige Entscheidungen während des Prozesses in der Spec dokumentieren — nicht nur WAS entschieden wurde, sondern WARUM. Das hilft beim nächsten Review und für zukünftige Features.
+
+Beispiel aus Top-5-Feature:
+- "Stage-normalisierter Peer-Percentile statt absoluter Score-Vergleich — weil Series-A-60 ≠ Seed-60"
+- "Eigener Backdrop `#weeklyTop5Backdrop` statt bestehender `modalBackdrop` — kein Eingriff in bestehende Infrastruktur"
+
+---
+
+## Zusammenfassung: Was diesen Workflow professionell macht
+
+1. **Frühe Validierung** — Design-Fehler werden im Mockup gefunden, nicht nach 4 Stunden Implementierung
+2. **Klare Spec** — Jeder weiß was gebaut wird, keine Interpretation nötig
+3. **Isolierung** — Worktree schützt `main`; frische Subagents vermeiden Context-Fehler
+4. **Rückverfolgbarkeit** — Mockups, Spec, Plan und Commits sind alle im Repo
+5. **Atomare Commits** — Ein Commit pro Task, klare Historie
